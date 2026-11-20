@@ -1,0 +1,49 @@
+name: build-image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/build.yml"
+      - "UPSTREAM_SHA"
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  UPSTREAM_REPO: jo-inc/camofox-browser
+  UPSTREAM_SHA: 31376c27db94204ffdc635ae71a7f61328e91a5e
+  IMAGE: ghcr.io/iconicfinesse/camofox-browser
+  IMAGE_VERSION: 1.19.0
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out upstream camofox-browser at the pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPO }}
+          ref: ${{ env.UPSTREAM_SHA }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push the image (upstream Dockerfile.ci)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.ci
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ env.IMAGE_VERSION }}
+            ${{ env.IMAGE }}:latest
